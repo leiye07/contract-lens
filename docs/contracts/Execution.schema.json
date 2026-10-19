@@ -1,0 +1,547 @@
+{
+  "$defs": {
+    "Citation": {
+      "additionalProperties": false,
+      "properties": {
+        "clause_id": {
+          "maxLength": 100,
+          "minLength": 1,
+          "title": "Clause Id",
+          "type": "string"
+        },
+        "quote": {
+          "maxLength": 1200,
+          "minLength": 12,
+          "title": "Quote",
+          "type": "string"
+        },
+        "document_id": {
+          "title": "Document Id",
+          "type": "string"
+        },
+        "document_version": {
+          "title": "Document Version",
+          "type": "string"
+        },
+        "document_sha256": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Document Sha256",
+          "type": "string"
+        },
+        "char_start": {
+          "minimum": 0,
+          "title": "Char Start",
+          "type": "integer"
+        },
+        "char_end": {
+          "exclusiveMinimum": 0,
+          "title": "Char End",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "clause_id",
+        "quote",
+        "document_id",
+        "document_version",
+        "document_sha256",
+        "char_start",
+        "char_end"
+      ],
+      "title": "Citation",
+      "type": "object"
+    },
+    "ContractReport": {
+      "additionalProperties": false,
+      "properties": {
+        "contract_version": {
+          "const": "1.0",
+          "default": "1.0",
+          "title": "Contract Version",
+          "type": "string"
+        },
+        "artifact_type": {
+          "const": "contract_report",
+          "default": "contract_report",
+          "title": "Artifact Type",
+          "type": "string"
+        },
+        "question": {
+          "title": "Question",
+          "type": "string"
+        },
+        "conclusion_status": {
+          "enum": [
+            "supported",
+            "qualified",
+            "conflicting",
+            "insufficient_evidence"
+          ],
+          "title": "Conclusion Status",
+          "type": "string"
+        },
+        "findings": {
+          "items": {
+            "$ref": "#/$defs/Finding"
+          },
+          "maxItems": 8,
+          "title": "Findings",
+          "type": "array"
+        },
+        "conditions": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 8,
+          "title": "Conditions",
+          "type": "array"
+        },
+        "gaps": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 8,
+          "title": "Gaps",
+          "type": "array"
+        },
+        "review_questions": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 8,
+          "title": "Review Questions",
+          "type": "array"
+        },
+        "package_id": {
+          "title": "Package Id",
+          "type": "string"
+        },
+        "package_sha256": {
+          "title": "Package Sha256",
+          "type": "string"
+        },
+        "evidence_ledger": {
+          "items": {
+            "$ref": "#/$defs/LedgerEntry"
+          },
+          "maxItems": 24,
+          "title": "Evidence Ledger",
+          "type": "array"
+        },
+        "source_clauses": {
+          "items": {
+            "$ref": "#/$defs/SourceClause"
+          },
+          "maxItems": 40,
+          "title": "Source Clauses",
+          "type": "array"
+        },
+        "plans": {
+          "items": {
+            "$ref": "#/$defs/PlanInput"
+          },
+          "maxItems": 8,
+          "title": "Plans",
+          "type": "array"
+        },
+        "model_usage": {
+          "$ref": "#/$defs/Usage"
+        },
+        "versions": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Versions",
+          "type": "object"
+        }
+      },
+      "required": [
+        "question",
+        "conclusion_status",
+        "findings",
+        "conditions",
+        "gaps",
+        "review_questions",
+        "package_id",
+        "package_sha256",
+        "evidence_ledger",
+        "source_clauses",
+        "plans",
+        "model_usage",
+        "versions"
+      ],
+      "title": "ContractReport",
+      "type": "object"
+    },
+    "Evaluation": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "category": {
+          "enum": [
+            "deterministic",
+            "trajectory",
+            "semantic",
+            "domain",
+            "operational"
+          ],
+          "title": "Category",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "passed",
+            "failed",
+            "unknown",
+            "skipped",
+            "errored"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "evaluator": {
+          "title": "Evaluator",
+          "type": "string"
+        },
+        "evaluator_version": {
+          "title": "Evaluator Version",
+          "type": "string"
+        },
+        "configuration": {
+          "additionalProperties": true,
+          "title": "Configuration",
+          "type": "object"
+        },
+        "metrics": {
+          "additionalProperties": true,
+          "title": "Metrics",
+          "type": "object"
+        },
+        "provenance": {
+          "additionalProperties": true,
+          "title": "Provenance",
+          "type": "object"
+        },
+        "reason": {
+          "title": "Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "category",
+        "status",
+        "evaluator",
+        "evaluator_version",
+        "configuration",
+        "metrics",
+        "provenance",
+        "reason"
+      ],
+      "title": "Evaluation",
+      "type": "object"
+    },
+    "Event": {
+      "additionalProperties": false,
+      "properties": {
+        "seq": {
+          "minimum": 1,
+          "title": "Seq",
+          "type": "integer"
+        },
+        "occurred_at": {
+          "format": "date-time",
+          "title": "Occurred At",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "state_transition",
+            "plan_recorded",
+            "tool_called",
+            "tool_completed",
+            "context_assembled",
+            "model_completed",
+            "ledger_recorded",
+            "validation_rejected",
+            "evaluation_recorded"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "status": {
+          "anyOf": [
+            {
+              "enum": [
+                "queued",
+                "running",
+                "succeeded",
+                "failed",
+                "cancelled",
+                "timed_out"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Status"
+        },
+        "data": {
+          "additionalProperties": true,
+          "title": "Data",
+          "type": "object"
+        }
+      },
+      "required": [
+        "seq",
+        "occurred_at",
+        "kind",
+        "data"
+      ],
+      "title": "Event",
+      "type": "object"
+    },
+    "Finding": {
+      "additionalProperties": false,
+      "properties": {
+        "claim": {
+          "maxLength": 1200,
+          "minLength": 1,
+          "title": "Claim",
+          "type": "string"
+        },
+        "citations": {
+          "items": {
+            "$ref": "#/$defs/Citation"
+          },
+          "maxItems": 6,
+          "minItems": 1,
+          "title": "Citations",
+          "type": "array"
+        }
+      },
+      "required": [
+        "claim",
+        "citations"
+      ],
+      "title": "Finding",
+      "type": "object"
+    },
+    "LedgerEntry": {
+      "additionalProperties": false,
+      "properties": {
+        "topic": {
+          "maxLength": 60,
+          "minLength": 1,
+          "title": "Topic",
+          "type": "string"
+        },
+        "finding": {
+          "maxLength": 700,
+          "minLength": 1,
+          "title": "Finding",
+          "type": "string"
+        },
+        "clause_ids": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 6,
+          "minItems": 1,
+          "title": "Clause Ids",
+          "type": "array"
+        }
+      },
+      "required": [
+        "topic",
+        "finding",
+        "clause_ids"
+      ],
+      "title": "LedgerEntry",
+      "type": "object"
+    },
+    "PlanInput": {
+      "additionalProperties": false,
+      "properties": {
+        "steps": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 8,
+          "minItems": 1,
+          "title": "Steps",
+          "type": "array"
+        }
+      },
+      "required": [
+        "steps"
+      ],
+      "title": "PlanInput",
+      "type": "object"
+    },
+    "SourceClause": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "document_id": {
+          "title": "Document Id",
+          "type": "string"
+        },
+        "document_title": {
+          "title": "Document Title",
+          "type": "string"
+        },
+        "document_version": {
+          "title": "Document Version",
+          "type": "string"
+        },
+        "document_sha256": {
+          "title": "Document Sha256",
+          "type": "string"
+        },
+        "section": {
+          "title": "Section",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "text": {
+          "title": "Text",
+          "type": "string"
+        },
+        "char_start": {
+          "title": "Char Start",
+          "type": "integer"
+        },
+        "char_end": {
+          "title": "Char End",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "document_id",
+        "document_title",
+        "document_version",
+        "document_sha256",
+        "section",
+        "title",
+        "text",
+        "char_start",
+        "char_end"
+      ],
+      "title": "SourceClause",
+      "type": "object"
+    },
+    "Usage": {
+      "additionalProperties": false,
+      "properties": {
+        "input_tokens": {
+          "minimum": 0,
+          "title": "Input Tokens",
+          "type": "integer"
+        },
+        "output_tokens": {
+          "minimum": 0,
+          "title": "Output Tokens",
+          "type": "integer"
+        },
+        "model_calls": {
+          "minimum": 0,
+          "title": "Model Calls",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "input_tokens",
+        "output_tokens",
+        "model_calls"
+      ],
+      "title": "Usage",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "integration_version": {
+      "const": "1.1",
+      "default": "1.1",
+      "title": "Integration Version",
+      "type": "string"
+    },
+    "id": {
+      "format": "uuid",
+      "title": "Id",
+      "type": "string"
+    },
+    "status": {
+      "enum": [
+        "queued",
+        "running",
+        "succeeded",
+        "failed",
+        "cancelled",
+        "timed_out"
+      ],
+      "title": "Status",
+      "type": "string"
+    },
+    "events": {
+      "items": {
+        "$ref": "#/$defs/Event"
+      },
+      "maxItems": 120,
+      "title": "Events",
+      "type": "array"
+    },
+    "result": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ContractReport"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "evaluations": {
+      "items": {
+        "$ref": "#/$defs/Evaluation"
+      },
+      "title": "Evaluations",
+      "type": "array"
+    },
+    "failure_code": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Failure Code"
+    }
+  },
+  "required": [
+    "id",
+    "status",
+    "events",
+    "evaluations"
+  ],
+  "title": "Execution",
+  "type": "object"
+}

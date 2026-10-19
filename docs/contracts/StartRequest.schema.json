@@ -1,0 +1,25 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "format": "uuid",
+      "title": "Id",
+      "type": "string"
+    },
+    "scenario_id": {
+      "enum": [
+        "termination-complete",
+        "termination-missing-schedule",
+        "termination-conflicting-amendments"
+      ],
+      "title": "Scenario Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "scenario_id"
+  ],
+  "title": "StartRequest",
+  "type": "object"
+}

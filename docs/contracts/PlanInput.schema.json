@@ -1,0 +1,19 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "steps": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 8,
+      "minItems": 1,
+      "title": "Steps",
+      "type": "array"
+    }
+  },
+  "required": [
+    "steps"
+  ],
+  "title": "PlanInput",
+  "type": "object"
+}

@@ -1,0 +1,33 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "topic": {
+      "maxLength": 60,
+      "minLength": 1,
+      "title": "Topic",
+      "type": "string"
+    },
+    "finding": {
+      "maxLength": 700,
+      "minLength": 1,
+      "title": "Finding",
+      "type": "string"
+    },
+    "clause_ids": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 6,
+      "minItems": 1,
+      "title": "Clause Ids",
+      "type": "array"
+    }
+  },
+  "required": [
+    "topic",
+    "finding",
+    "clause_ids"
+  ],
+  "title": "LedgerEntry",
+  "type": "object"
+}
