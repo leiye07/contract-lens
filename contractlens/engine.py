@@ -76,7 +76,7 @@ def versions():
         "prompt_sha256": PROMPT_SHA,
         "tools_sha256": TOOL_SHA,
         "model": config.model(),
-        "provider": "anthropic-messages",
+        "provider": config.model_provider() + "-messages",
         "corpus": "fictional-v1",
     }
 

@@ -1,0 +1,11 @@
+services:
+  postgres:
+    environment:
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?required}
+  api:
+    environment:
+      DATABASE_URL: postgresql://contractlens:${DB_PASSWORD:?required}@postgres:5432/contractlens
+  worker:
+    environment:
+      MODEL_PROVIDER: ${MODEL_PROVIDER:-anthropic}
+      DATABASE_URL: postgresql://contractlens:${DB_PASSWORD:?required}@postgres:5432/contractlens

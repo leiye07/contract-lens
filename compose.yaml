@@ -5,7 +5,7 @@ x-runtime: &runtime
   init: true
   restart: unless-stopped
   read_only: true
-  tmpfs: [/tmp:size=16m,mode=1777]
+  tmpfs: ["/tmp:size=16m,mode=1777"]
   environment: &environment
     DATABASE_URL: postgresql://contractlens:contractlens-local-only@postgres:5432/contractlens
     MODEL_EXECUTION_ENABLED: ${MODEL_EXECUTION_ENABLED:-false}

@@ -65,3 +65,12 @@ Tests inject explicitly scripted providers or HTTP mock transports; these never 
 Start the two independent Compose deployments, provision a model key without exposing it to the sandbox, and execute one approved question from the UI. Verify actual model usage, ordered event history, exact quoted spans, highlighted citations, persisted result/evaluations, cancellation/timeout and private-run isolation. Restart the sandbox and confirm its evidence survives; restart the worker mid-run and confirm interruption is recorded without paid-call replay. Stop ContractLens and confirm catalog/history remain available.
 
 A completed run with failed retrieval/checklist evaluation is displayed as such. Unknown legal correctness must remain unknown. Do not substitute scripted test reports for this acceptance run.
+
+## OpenRouter provider
+
+Use `MODEL_PROVIDER=openrouter` in the runtime `.env` with an explicit OpenRouter model ID
+(e.g. `openai/gpt-oss-120b`). The production Compose overlay passes this setting to the worker.
+The existing `secrets/anthropic_api_key` file is the provider credential mount; for OpenRouter it must
+contain the OpenRouter key. It is sent using bearer authentication only to `https://openrouter.ai/api/v1/messages`.
+The default `MODEL_PROVIDER=anthropic` keeps the direct Anthropic endpoint and authentication.
+Request/response bounds, tool schemas, execution budgets and sanitized errors remain enforced.
