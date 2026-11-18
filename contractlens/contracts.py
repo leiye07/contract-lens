@@ -164,7 +164,7 @@ class Execution(Strict):
     status: Literal[
         "queued", "running", "succeeded", "failed", "cancelled", "timed_out"
     ]
-    events: list[Event] = Field(max_length=120)
+    events: list[Event] = Field(max_length=500)
     result: ContractReport | None = None
     evaluations: list[Evaluation]
     failure_code: str | None = None

@@ -501,7 +501,7 @@
       "items": {
         "$ref": "#/$defs/Event"
       },
-      "maxItems": 120,
+      "maxItems": 500,
       "title": "Events",
       "type": "array"
     },

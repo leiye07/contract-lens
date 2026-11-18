@@ -11,6 +11,7 @@ class ProviderFailure(RuntimeError):
 
 class AnthropicProvider:
     def __init__(self, transport=None):
+        self.budget = config.run_budget()
         provider = config.model_provider()
         if provider not in {"anthropic", "openrouter"}:
             raise ProviderFailure("Unsupported model provider")
@@ -23,7 +24,7 @@ class AnthropicProvider:
         self.client = httpx.Client(
             base_url="https://openrouter.ai" if provider == "openrouter" else "https://api.anthropic.com",
             headers=headers,
-            timeout=httpx.Timeout(25, connect=5),
+            timeout=httpx.Timeout(self.budget.request_timeout_seconds, connect=5),
             follow_redirects=False,
             trust_env=False,
             transport=transport,
@@ -37,7 +38,7 @@ class AnthropicProvider:
                 self.message_path,
                 json={
                     "model": config.model(),
-                    "max_tokens": 2400,
+                    "max_tokens": self.budget.output_tokens,
                     "system": system,
                     "messages": messages,
                     "tools": tools,
@@ -49,7 +50,7 @@ class AnthropicProvider:
                 size = 0
                 for chunk in response.iter_bytes():
                     size += len(chunk)
-                    if size > 128000:
+                    if size > self.budget.response_bytes:
                         raise ProviderFailure("Provider response exceeded limit")
                     parts.append(chunk)
                 value = json.loads(b"".join(parts))

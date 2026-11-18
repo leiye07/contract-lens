@@ -179,7 +179,7 @@ def start(body: StartRequest):
                 body.scenario_id,
                 Jsonb(
                     {
-                        "timeout_seconds": 120,
+                        "timeout_seconds": config.run_budget().timeout_seconds,
                         "model_turns": 8,
                         "tool_calls": 12,
                         "context_byte_limit": 80000,

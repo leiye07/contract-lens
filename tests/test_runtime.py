@@ -266,7 +266,8 @@ def test_missing_package_cannot_claim_supported(client):
         )
 
 
-def test_tool_budget(client):
+def test_tool_budget(client, monkeypatch):
+    monkeypatch.setenv("CONTRACTLENS_BUDGET_TOOL_CALLS", "12")
     agent = investigator()
     agent.invoke("record_plan", {"steps": ["Bounded investigation"]})
     for _ in range(11):
@@ -429,3 +430,23 @@ def test_provider_protocol_and_no_secret_errors(client):
         provider.complete("instruction", [], TOOL_DEFINITIONS)
     assert "secret-provider-error" not in str(exc.value)
     provider.close()
+
+
+def test_investigation_can_finish_beyond_old_eight_turn_limit(client):
+    eid = submit(client)
+    with db.connect() as c:
+        db.transition(c, eid, "running")
+    class ExtendedProvider(ScriptedProvider):
+        def __init__(self):
+            super().__init__("termination-complete")
+            self.actual_turns = 0
+        def complete(self, system, messages, tools):
+            self.actual_turns += 1
+            if 3 <= self.actual_turns <= 9:
+                return {"content":[{"type":"tool_use","id":f"extra-{self.actual_turns}","name":"check_evidence_coverage","input":{}}], "calls":[{"id":f"extra-{self.actual_turns}","name":"check_evidence_coverage","input":{}}], "usage":{"input_tokens":10,"output_tokens":10}, "model":"test-model", "latency_ms":1}
+            return super().complete(system,messages,tools)
+    provider = ExtendedProvider()
+    report = run(eid, provider)
+    assert provider.actual_turns == 10
+    assert report["model_usage"]["model_calls"] == 10
+    assert client.get("/demo/v1/executions/"+eid).json()["status"] == "succeeded"

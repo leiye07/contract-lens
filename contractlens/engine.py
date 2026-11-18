@@ -94,6 +94,7 @@ class Investigator:
         self.ledger = []
         self.plans = []
         self.calls = 0
+        self.budget = config.run_budget()
         self.emit = emit or (lambda kind, data: db.record(eid, kind, data))
         self.documents_inspected = False
 
@@ -107,11 +108,11 @@ class Investigator:
 
     def invoke(self, name, raw):
         self.calls += 1
-        if self.calls > 12:
+        if self.calls > self.budget.tool_calls:
             raise BudgetExceeded("Tool budget exhausted")
         if name not in TOOLS:
             raise ValueError("Tool not permitted")
-        if len(json.dumps(raw).encode()) > 6000:
+        if len(json.dumps(raw).encode()) > self.budget.tool_input_bytes:
             raise ValueError("Tool input too large")
         args = TOOLS[name][0].model_validate(raw)
         self.emit(
@@ -121,7 +122,7 @@ class Investigator:
         if name != "record_plan" and not self.plans:
             raise ValueError("Record an investigation plan first")
         if name == "record_plan":
-            if len(self.plans) >= 8:
+            if len(self.plans) >= self.budget.plan_revisions:
                 raise BudgetExceeded("Plan budget exhausted")
             self.plans.append(args.model_dump())
             self.emit(
@@ -149,7 +150,7 @@ class Investigator:
                 "references": self.observed[args.clause_id]["references"],
             }
         elif name == "update_ledger":
-            if len(self.ledger) + len(args.entries) > 24:
+            if len(self.ledger) + len(args.entries) > self.budget.ledger_entries:
                 raise BudgetExceeded("Ledger budget exhausted")
             entries = [e.model_dump() for e in args.entries]
             if any(
@@ -304,6 +305,20 @@ def evaluate(report, scenario, latency):
     ]
 
 
+def budget_context(messages, budget, turn, tool_calls):
+    remaining = {
+        "model_calls_remaining_including_this": budget.model_calls - turn + 1,
+        "tool_calls_remaining": budget.tool_calls - tool_calls,
+        "instruction": "Batch related retrieval. Reserve calls for update_ledger, check_evidence_coverage and finish_report. Finish with explicit gaps rather than inventing evidence.",
+    }
+    if remaining["model_calls_remaining_including_this"] <= 4 or remaining["tool_calls_remaining"] <= 4:
+        remaining["instruction"] += " Reporting phase: stop broad searches; use observed evidence, record gaps, and submit finish_report before the budget ends."
+    last = dict(messages[-1])
+    content = last["content"]
+    last["content"] = (list(content) if isinstance(content, list) else [{"type": "text", "text": content}]) + [{"type": "text", "text": json.dumps({"run_budget": remaining})}]
+    return messages[:-1] + [last]
+
+
 def run(eid, provider):
     with db.connect() as c:
         scenario = c.execute(
@@ -311,6 +326,7 @@ def run(eid, provider):
             (eid,),
         ).fetchone()
     investigator = Investigator(eid, scenario)
+    budget = investigator.budget
     messages = [
         {
             "role": "user",
@@ -319,7 +335,7 @@ def run(eid, provider):
                     "question": scenario["question"],
                     "package_id": scenario["package_id"],
                     "checklist": scenario["checklist"],
-                    "limits": {"model_turns": 8, "tool_calls": 12},
+                    "limits": budget.public(),
                     "data_classification": "fictional demonstration documents",
                 }
             ),
@@ -327,11 +343,12 @@ def run(eid, provider):
     ]
     usage = {"input_tokens": 0, "output_tokens": 0, "model_calls": 0}
     started = time.monotonic()
-    for turn in range(1, 9):
+    for turn in range(1, budget.model_calls + 1):
+        turn_messages = budget_context(messages, budget, turn, investigator.calls)
         context_size = len(
-            (PROMPT + json.dumps(messages) + json.dumps(TOOL_DEFINITIONS)).encode()
+            (PROMPT + json.dumps(turn_messages) + json.dumps(TOOL_DEFINITIONS)).encode()
         )
-        if context_size > 80000:
+        if context_size > budget.context_bytes:
             raise BudgetExceeded("Context byte budget exhausted")
         with db.connect() as c:
             row = c.execute(
@@ -344,15 +361,15 @@ def run(eid, provider):
             {
                 "turn": turn,
                 "utf8_bytes": context_size,
-                "byte_limit": 80000,
+                "byte_limit": budget.context_bytes,
                 "prompt_sha256": PROMPT_SHA,
                 "source_clause_ids": list(investigator.observed),
                 "ledger_entries": len(investigator.ledger),
                 "messages": len(messages),
-                "output_token_limit": 2400,
+                "output_token_limit": budget.output_tokens,
             },
         )
-        response = provider.complete(PROMPT, messages, TOOL_DEFINITIONS)
+        response = provider.complete(PROMPT, turn_messages, TOOL_DEFINITIONS)
         for k in ["input_tokens", "output_tokens"]:
             count = response["usage"][k]
             if not isinstance(count, int) or count < 0:
@@ -368,7 +385,7 @@ def run(eid, provider):
                 "latency_ms": response["latency_ms"],
             },
         )
-        if len(response["calls"]) > 6:
+        if len(response["calls"]) > budget.tools_per_turn:
             raise BudgetExceeded("Too many tool calls in one turn")
         messages.append({"role": "assistant", "content": response["content"]})
         results = []

@@ -14,7 +14,9 @@ def stop(*_):
         CHILD.kill()
 
 
-def execute(eid, timeout_seconds=120, guard=None):
+def execute(eid, timeout_seconds=None, guard=None):
+    if timeout_seconds is None:
+        timeout_seconds = config.run_budget().timeout_seconds
     global CHILD
     expired = threading.Event()
     process = subprocess.Popen(
@@ -82,6 +84,7 @@ def execute(eid, timeout_seconds=120, guard=None):
 def main():
     signal.signal(signal.SIGTERM, stop)
     signal.signal(signal.SIGINT, stop)
+    config.run_budget()  # Fail fast on invalid execution configuration.
     db.migrate()
     import psycopg, os
 

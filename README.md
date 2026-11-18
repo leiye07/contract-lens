@@ -74,3 +74,15 @@ The existing `secrets/anthropic_api_key` file is the provider credential mount; 
 contain the OpenRouter key. It is sent using bearer authentication only to `https://openrouter.ai/api/v1/messages`.
 The default `MODEL_PROVIDER=anthropic` keeps the direct Anthropic endpoint and authentication.
 Request/response bounds, tool schemas, execution budgets and sanitized errors remain enforced.
+
+## Per-run budgets
+
+Execution budgets are validated from `CONTRACTLENS_BUDGET_*` settings in `.env` and passed
+to API/worker by Compose. Defaults: 24 model calls, 40 tool calls, 300 seconds, 160,000 context bytes,
+4,096 output tokens per call, 30-second provider request timeout, 320 evidence events.
+See `.env.example` for all settings. These are renewed per run; session/hourly admission quotas are separate.
+Invalid/out-of-range settings or an evidence budget too small for the model/tool allowance fail validation.
+Wire schemas retain fixed safety ceilings (500 events, eight plan revisions, 24 ledger entries).
+The model receives the active limits and remaining model/tool calls each turn, with a reporting warning
+in its final four calls. Existing failed runs remain immutable; retry as a new run after changing budgets.
+After editing `.env`, recreate API and worker; a plain container restart does not reload Compose environment.

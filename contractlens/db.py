@@ -4,6 +4,7 @@ from contextlib import contextmanager
 import psycopg
 from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
+from . import config
 
 TERMINAL = {"succeeded", "failed", "cancelled", "timed_out"}
 TRANSITIONS = {
@@ -28,7 +29,7 @@ def append(c, eid, kind, data, status=None):
     row = c.execute(
         "SELECT next_seq FROM executions WHERE id=%s FOR UPDATE", (eid,)
     ).fetchone()
-    if row["next_seq"] > 120:
+    if row["next_seq"] > config.run_budget().evidence_events:
         raise ValueError("Evidence budget exceeded")
     c.execute(
         "INSERT INTO evidence_events(execution_id,seq,kind,status,data) VALUES (%s,%s,%s,%s,%s)",
@@ -38,7 +39,7 @@ def append(c, eid, kind, data, status=None):
 
 
 def record(eid, kind, data):
-    if len(json.dumps(data).encode()) > 24000:
+    if len(json.dumps(data).encode()) > config.run_budget().evidence_payload_bytes:
         raise ValueError("Evidence payload too large")
     with connect() as c:
         row = c.execute(
