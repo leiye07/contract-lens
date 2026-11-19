@@ -21,7 +21,7 @@ class StartRequest(Strict):
 
 
 class PlanInput(Strict):
-    steps: list[str] = Field(min_length=1, max_length=8)
+    steps: list[str] = Field(min_length=1, max_length=16, description="Concise investigation steps; batch related retrieval and reserve reporting calls.")
 
 
 class EmptyInput(Strict):
@@ -34,7 +34,7 @@ class SearchInput(Strict):
 
 
 class ReadInput(Strict):
-    clause_ids: list[str] = Field(min_length=1, max_length=4)
+    clause_ids: list[str] = Field(min_length=1, max_length=12)
 
 
 class ReferenceInput(Strict):

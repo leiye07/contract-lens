@@ -4,6 +4,7 @@ import hashlib, json, uuid, time
 from pathlib import Path
 from pydantic import ValidationError
 from . import db, corpus, config
+from .provider import ModelOutputRejected, RetryableProviderFailure
 from .contracts import (
     PlanInput,
     EmptyInput,
@@ -76,7 +77,9 @@ def versions():
         "prompt_sha256": PROMPT_SHA,
         "tools_sha256": TOOL_SHA,
         "model": config.model(),
-        "provider": config.model_provider() + "-messages",
+        "provider": config.model_provider(),
+        "provider_protocol": "chat-completions" if config.model_provider() == "openrouter" else "messages",
+        "usage_accounting": "All model requests counted; tokens include reported usage only. Upstream-rejected responses may omit token usage.",
         "corpus": "fictional-v1",
     }
 
@@ -343,6 +346,7 @@ def run(eid, provider):
     ]
     usage = {"input_tokens": 0, "output_tokens": 0, "model_calls": 0}
     started = time.monotonic()
+    provider_failures = 0
     for turn in range(1, budget.model_calls + 1):
         turn_messages = budget_context(messages, budget, turn, investigator.calls)
         context_size = len(
@@ -369,13 +373,33 @@ def run(eid, provider):
                 "output_token_limit": budget.output_tokens,
             },
         )
-        response = provider.complete(PROMPT, turn_messages, TOOL_DEFINITIONS)
+        usage["model_calls"] += 1
+        try:
+            response = provider.complete(PROMPT, turn_messages, TOOL_DEFINITIONS)
+        except RetryableProviderFailure as exc:
+            provider_failures += 1
+            investigator.emit("validation_rejected", {"tool": "unrecognized", "reason": "Temporary provider failure: " + exc.category + "; no tool ran. " + json.dumps(exc.diagnostic, sort_keys=True)})
+            if provider_failures >= 3:
+                raise
+            time.sleep(0.25 * provider_failures)
+            continue
+        except ModelOutputRejected as exc:
+            investigator.emit("validation_rejected", {"tool": "unrecognized", "reason": "Provider rejected model tool output: " + exc.category + ". Correct using the supplied schema. " + json.dumps(exc.diagnostic, sort_keys=True)})
+            messages.append({"role": "user", "content": "The provider rejected your generated tool arguments. Follow the exact tool schema and its item bounds; produce a valid tool call. No tool ran."})
+            continue
+        provider_failures = 0
+        if not response["calls"]:
+            investigator.emit("validation_rejected", {"tool": "unrecognized", "reason": "Model omitted the required tool call; correct within the run budget."})
+            # Retain reported usage, but don't create an unpaired/empty tool-result transcript.
+            for key in ["input_tokens", "output_tokens"]:
+                usage[key] += response["usage"][key]
+            messages.append({"role": "user", "content": "Respond using an allowed tool call, not plain text."})
+            continue
         for k in ["input_tokens", "output_tokens"]:
             count = response["usage"][k]
             if not isinstance(count, int) or count < 0:
                 raise ValueError("Invalid provider usage")
             usage[k] += count
-        usage["model_calls"] += 1
         investigator.emit(
             "model_completed",
             {

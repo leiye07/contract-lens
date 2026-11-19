@@ -370,10 +370,11 @@
       "additionalProperties": false,
       "properties": {
         "steps": {
+          "description": "Concise investigation steps; batch related retrieval and reserve reporting calls.",
           "items": {
             "type": "string"
           },
-          "maxItems": 8,
+          "maxItems": 16,
           "minItems": 1,
           "title": "Steps",
           "type": "array"

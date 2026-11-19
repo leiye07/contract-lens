@@ -450,3 +450,41 @@ def test_investigation_can_finish_beyond_old_eight_turn_limit(client):
     assert provider.actual_turns == 10
     assert report["model_usage"]["model_calls"] == 10
     assert client.get("/demo/v1/executions/"+eid).json()["status"] == "succeeded"
+
+
+def test_provider_schema_rejection_consumes_a_turn_and_recovers(client):
+    from contractlens.provider import ModelOutputRejected
+    class RejectedOnce(ScriptedProvider):
+        rejected=False
+        def complete(self,*args):
+            if not self.rejected:
+                self.rejected=True
+                raise ModelOutputRejected(category='upstream_tool_schema')
+            return super().complete(*args)
+    eid=submit(client)
+    with db.connect() as c:db.transition(c,eid,'running')
+    result=run(eid,RejectedOnce('termination-complete'))
+    assert result['model_usage']['model_calls']==4
+    assert result['model_usage']['input_tokens']==300
+
+
+def test_plan_accepts_sixteen_steps_but_remains_bounded():
+    from contractlens.contracts import PlanInput,ReadInput
+    assert len(PlanInput(steps=['Investigate']*16).steps)==16
+    with pytest.raises(ValueError):PlanInput(steps=['Investigate']*17)
+    assert len(ReadInput(clause_ids=['clause']*12).clause_ids)==12
+
+
+def test_temporary_provider_retry_is_bounded_and_counts_requests(client):
+    from contractlens.provider import RetryableProviderFailure
+    class TemporaryFailure(ScriptedProvider):
+        failures=0
+        def complete(self,*args):
+            if self.failures<2:
+                self.failures+=1
+                raise RetryableProviderFailure(category='transient_http_502')
+            return super().complete(*args)
+    eid=submit(client)
+    with db.connect() as c:db.transition(c,eid,'running')
+    report=run(eid,TemporaryFailure('termination-complete'))
+    assert report['model_usage']['model_calls']==5
